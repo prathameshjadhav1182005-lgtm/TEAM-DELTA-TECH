@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>SAHAARA — Smart Care | Bar Graph for 20 Readings</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0c12;
+      font-family: 'Inter', sans-serif;
+      color: #f5e7d9;
+      padding: 20px 24px 48px;
+      min-height: 100vh;
+    }
+    .dashboard { max-width: 1500px; margin: 0 auto; }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(245, 231, 217, 0.2);
+    }
+    .logo h1 {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      background: linear-gradient(135deg, #f5e7d9 0%, #e0c7a8 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .logo p { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #c7b28b; }
+    .status-group { display: flex; gap: 12px; align-items: center; }
+    .badge {
+      background: #1e1f28;
+      border-radius: 60px;
+      padding: 8px 20px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid rgba(245, 231, 217, 0.2);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .connect-btn {
+      background: #2c2f3a;
+      cursor: pointer;
+      transition: 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .connect-btn:hover { background: #3d4150; border-color: #c7b28b; }
+    .dot { width: 10px; height: 10px; border-radius: 10px; background: #6b7280; transition: 0.2s; }
+    .dot.connected { background: #6fcf97; box-shadow: 0 0 6px #6fcf97; }
+    .dot.scanning { background: #f5b042; animation: pulse 0.8s infinite; }
+    .tab-nav {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 28px;
+      background: #12141c;
+      padding: 6px;
+      border-radius: 60px;
+      width: fit-content;
+      border: 1px solid rgba(245,231,217,0.15);
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 10px 28px;
+      border-radius: 40px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      color: #c7b28b;
+      transition: 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .tab-btn.active { background: #2a2e3f; color: #f5e7d9; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .monitor-grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
+    .patient-card {
+      background: #13151e;
+      border-radius: 32px;
+      padding: 24px 20px 28px;
+      border: 1px solid rgba(245, 231, 217, 0.15);
+    }
+    .avatar-canvas { display: flex; justify-content: center; margin: 10px 0 20px; }
+    .motion-simple {
+      background: #0c0e14;
+      border-radius: 24px;
+      padding: 18px 20px;
+      margin-top: 18px;
+      border: 1px solid rgba(245,231,217,0.1);
+    }
+    .motion-label { font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 1px; color: #c7b28b; margin-bottom: 12px; }
+    .motion-pills { display: flex; gap: 10px; flex-wrap: wrap; }
+    .pill {
+      background: #1e1f2a;
+      padding: 8px 20px;
+      border-radius: 40px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid #2f323f;
+      color: #b9ad9a;
+    }
+    .pill.active { background: #2e5a3c; border-color: #8fdfb0; color: white; }
+    .white-card {
+      background: #ffffff;
+      border-radius: 28px;
+      padding: 20px 24px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+    .white-card .title { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #2c3e4e; margin-bottom: 12px; letter-spacing: 1px; }
+    .gauges-row {
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .gauge-card {
+      flex: 1;
+      min-width: 240px;
+      background: #f8fafc;
+      border-radius: 28px;
+      padding: 20px;
+      text-align: center;
+    }
+    .semi-gauge {
+      width: 220px;
+      height: 130px;
+      margin: 0 auto;
+      position: relative;
+    }
+    .gauge-value {
+      font-size: 32px;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 8px;
+    }
+    .gauge-label-sm {
+      font-size: 11px;
+      color: #5a6e7c;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    .chart-container {
+      margin-top: 16px;
+      height: 280px;
+      position: relative;
+    }
+    .alert-log { background: #ffffff; border-radius: 28px; padding: 20px 24px; margin-top: 12px; }
+    .log-entry { font-family: 'JetBrains Mono', monospace; font-size: 11px; border-left: 3px solid #cbd5e1; padding: 6px 10px; background: #f8fafc; margin-bottom: 6px; border-radius: 12px; color: #1e293b; }
+    .log-danger { border-left-color: #b91c1c; background: #fff5f5; color: #991b1b; }
+    .cmd { background: #f1f5f9; border: none; padding: 8px 18px; border-radius: 40px; font-weight: 500; font-size: 12px; cursor: pointer; margin-right: 8px; margin-top: 8px; transition: 0.15s; }
+    .cmd:hover { background: #e2e8f0; transform: scale(0.97); }
+    .ward-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 24px; }
+    .stat-white-card { background: #ffffff; border-radius: 28px; padding: 20px 18px; }
+    .stat-label-sm { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #5a6e7c; letter-spacing: 1px; }
+    .stat-number { font-size: 38px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #1f2f3e; line-height: 1; margin: 8px 0 4px; }
+    .stat-number.red { color: #b91c1c; }
+    .stat-number.amber { color: #c2410c; }
+    .stat-number.green { color: #0d9f6e; }
+    .action-bar { background: #ffffff; border-radius: 28px; padding: 16px 22px; margin-bottom: 24px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+    .search-wrap input { padding: 10px 18px; border-radius: 40px; border: 1px solid #e2e8f0; width: 240px; font-family: 'Inter', sans-serif; outline: none; }
+    .filter-chips { display: flex; gap: 10px; }
+    .chip { padding: 6px 18px; border-radius: 40px; font-size: 12px; font-weight: 600; background: #f1f5f9; border: none; cursor: pointer; }
+    .chip.sos-active { background: #fee2e2; color: #b91c1c; }
+    .chip.ack-active { background: #fff3e3; color: #b45309; }
+    .chip.ok-active { background: #e0f2e9; color: #0d9f6e; }
+    .patient-grid-ward { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .ward-patient-card { background: #ffffff; border-radius: 24px; padding: 18px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #edf2f7; }
+    .ward-patient-card.sos { border-left: 5px solid #b91c1c; background: #fffafa; }
+    .ward-patient-card.ack { border-left: 5px solid #f59e0b; background: #fffcf5; }
+    .p-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .p-avatar { width: 44px; height: 44px; background: #eef2ff; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #1e3a8a; }
+    .status-tag { font-size: 10px; font-weight: 700; padding: 4px 12px; border-radius: 40px; }
+    .status-tag.sos { background: #fee2e2; color: #b91c1c; }
+    .status-tag.ack { background: #ffedd5; color: #b45309; }
+    .status-tag.ok { background: #d1fae5; color: #0d9f6e; }
+    .footer-credits {
+      margin-top: 48px;
+      text-align: center;
+      padding: 20px;
+      border-top: 1px solid rgba(245,231,217,0.1);
+      font-size: 13px;
+      color: #9e8b70;
+    }
+    @keyframes pulse { 0% { opacity: 0.4; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1.2); } }
+    @keyframes shakeAnim { 0% { transform: translateX(0); } 25% { transform: translateX(4px); } 75% { transform: translateX(-4px); } 100% { transform: translateX(0); } }
+    @keyframes bobAnim { 0% { transform: translateY(0); } 50% { transform: translateY(-4px); } 100% { transform: translateY(0); } }
+    @keyframes walkAnim { 0% { transform: rotate(0deg); } 25% { transform: rotate(2deg); } 75% { transform: rotate(-2deg); } 100% { transform: rotate(0deg); } }
+    @keyframes breatheAnim { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+    @media (max-width: 850px) { .monitor-grid { grid-template-columns: 1fr; } .ward-stats-grid { grid-template-columns: 1fr 1fr; } .gauges-row { flex-direction: column; align-items: center; } }
+  </style>
+</head>
+<body>
+<div class="dashboard">
+  <div class="top-bar">
+    <div class="logo"><h1>SAHAARA</h1><p>sentinel · fall & emergency</p></div>
+    <div class="status-group">
+      <div class="badge" id="alertLevelBadge">🟢 SAFE</div>
+      <div class="badge connect-btn" id="bleConnectBtn"><span class="dot" id="connDot"></span><span id="connText">Connect Device</span></div>
+    </div>
+  </div>
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tabMonitorBtn">🧍 PATIENT MONITOR</button>
+    <button class="tab-btn" id="tabWardBtn">🏥 WARD OVERVIEW</button>
+  </div>
+
+  <!-- MONITOR PANEL -->
+  <div id="monitorPanel" class="tab-panel active">
+    <div class="monitor-grid">
+      <div class="patient-card">
+        <div style="font-size: 20px; font-weight: 600;">Elder Resident</div>
+        <div style="font-size: 13px; color:#c7b28b; margin-bottom: 10px;">Room B-12 · SAHAARA Band</div>
+        <div class="avatar-canvas">
+          <svg id="characterSvg" viewBox="0 0 200 240" width="180" height="216">
+            <g id="characterGroup">
+              <ellipse cx="100" cy="228" rx="35" ry="6" fill="rgba(0,0,0,0.2)"/>
+              <rect x="80" y="170" width="12" height="48" rx="6" fill="#59656b" id="legL"/>
+              <rect x="108" y="170" width="12" height="48" rx="6" fill="#59656b" id="legR"/>
+              <rect x="78" y="102" width="44" height="74" rx="22" fill="#6c8b9b" id="torso"/>
+              <rect x="62" y="106" width="10" height="52" rx="5" fill="#567381" id="armL"/>
+              <rect x="128" y="106" width="10" height="52" rx="5" fill="#567381" id="armR"/>
+              <circle cx="100" cy="76" r="32" fill="#f0cfb0" id="head"/>
+              <circle cx="88" cy="70" r="4" fill="#2f2e2e"/><circle cx="112" cy="70" r="4" fill="#2f2e2e"/>
+              <path id="mouth" d="M92,84 Q100,92 108,84" fill="none" stroke="#4a2c1a" stroke-width="2.2"/>
+              <path id="browL" d="M82,62 Q88,58 94,62" fill="none" stroke="#4a2c1a" stroke-width="2"/>
+              <path id="browR" d="M106,62 Q112,58 118,62" fill="none" stroke="#4a2c1a" stroke-width="2"/>
+              <g id="alertMark" display="none"><circle cx="140" cy="42" r="16" fill="#c0392b"/><text x="140" y="48" font-size="16" font-weight="bold" fill="white">!</text></g>
+            </g>
+          </svg>
+        </div>
+        <div class="motion-simple">
+          <div class="motion-label">🚶 CURRENT MOTION</div>
+          <div class="motion-pills">
+            <span class="pill" id="pillStill">🧍 STILL</span>
+            <span class="pill" id="pillWalk">🚶 WALK</span>
+            <span class="pill" id="pillActive">🏃 ACTIVE</span>
+            <span class="pill" id="pillRapid">⚡ RAPID</span>
+          </div>
+          <div class="motion-label" style="margin-top: 14px;">📢 FALL / SOS STATUS</div>
+          <div id="fallStatusText" style="font-weight: 600; font-size: 14px;">✓ No alert</div>
+        </div>
+      </div>
+      <div>
+        <!-- SEMICIRCULAR GAUGES + BAR CHART (20 readings) -->
+        <div class="white-card">
+          <div class="title">📊 VITAL SIGNS MONITOR</div>
+          <div class="gauges-row">
+            <div class="gauge-card">
+              <div class="gauge-label-sm">🌡️ BODY TEMPERATURE</div>
+              <canvas id="tempSemiGauge" class="semi-gauge" width="220" height="130"></canvas>
+              <div class="gauge-value"><span id="tempDisplay">36.5</span> °C</div>
+              <div id="tempStatusText" style="font-size: 12px; font-weight: 600; color: #0d9f6e;">NORMAL</div>
+            </div>
+            <div class="gauge-card">
+              <div class="gauge-label-sm">⚠️ RISK INDEX</div>
+              <canvas id="riskSemiGauge" class="semi-gauge" width="220" height="130"></canvas>
+              <div class="gauge-value"><span id="riskDisplay">0</span> / 100</div>
+              <div id="riskLevelText" style="font-size: 12px; font-weight: 600; color: #0d9f6e;">SAFE</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="tempBarChart" width="700" height="240" style="max-height:240px; width:100%"></canvas>
+            <div style="text-align: center; margin-top: 8px; font-size: 11px; color: #5a6e7c; font-weight: 500;">
+              📊 Last 20 Temperature Readings (Oldest → Newest)
+            </div>
+          </div>
+        </div>
+
+        <div class="white-card">
+          <div class="title">🔔 BUZZER & ALARM</div>
+          <div id="buzzerStatusMsg" style="font-weight:600; margin-bottom:12px;">🔕 SILENT · MONITORING</div>
+          <div>
+            <button class="cmd" id="silenceBtn">🔇 Silence</button>
+            <button class="cmd" id="dismissAlertBtn">✓ Dismiss</button>
+            <button class="cmd" id="cmdArm">🔒 Arm</button>
+            <button class="cmd" id="cmdTest">📢 Test</button>
+          </div>
+        </div>
+
+        <!-- BLE EVENT LOG: Last 20 readings -->
+        <div class="alert-log">
+          <div class="title">📋 BLE EVENT LOG (Last 20 Readings)</div>
+          <div id="eventLogContainer" style="max-height: 220px; overflow-y: auto;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WARD PANEL -->
+  <div id="wardPanel" class="tab-panel">
+    <div class="ward-stats-grid">
+      <div class="stat-white-card"><div class="stat-label-sm">Total Beds</div><div class="stat-number" id="wardTotal">24</div></div>
+      <div class="stat-white-card"><div class="stat-label-sm">Active SOS</div><div class="stat-number red" id="wardSosCount">0</div></div>
+      <div class="stat-white-card"><div class="stat-label-sm">Acknowledged</div><div class="stat-number amber" id="wardAckCount">0</div></div>
+      <div class="stat-white-card"><div class="stat-label-sm">Stable</div><div class="stat-number green" id="wardOkCount">24</div></div>
+    </div>
+    <div class="action-bar">
+      <div class="search-wrap"><input type="text" id="wardSearch" placeholder="🔍 Search by name / room"></div>
+      <div class="filter-chips">
+        <button class="chip" id="filterSosBtn">🚨 SOS</button>
+        <button class="chip" id="filterAckBtn">⚠️ Acknowledged</button>
+        <button class="chip" id="filterOkBtn">✅ Stable</button>
+      </div>
+    </div>
+    <div id="wardPatientGrid" class="patient-grid-ward"></div>
+    <div class="white-card" style="margin-top:0"><div class="title">📡 Ward Activity Log</div><div id="wardLogList" style="max-height:140px; overflow-y:auto;"></div></div>
+  </div>
+  
+  <div class="footer-credits">
+    🛡️ SYSTEM CREATORS: JAY & PRATHAMESH | SAHAARA Sentinel — Intelligent Fall Monitoring
+  </div>
+</div>
+
+<script>
+  // ======================== BLE + DATA HISTORY (20 readings) ========================
+  const SERVICE_UUID = "0000aa00-0000-1000-8000-00805f9b34fb";
+  const TEL_UUID = "0000aa01-0000-1000-8000-00805f9b34fb";
+  const CMD_UUID = "0000aa02-0000-1000-8000-00805f9b34fb";
+  
+  let bleDevice = null, telChar = null, cmdChar = null, isConnected = false;
+  let audioCtx = null, buzzerInterval = null;
+  let currentMotion = "STILL", fallActive = false;
+  
+  // Store last 20 temperature readings for bar chart
+  let tempHistory = [];     // array of {temp, risk, tempStatus, riskLevel, time}
+  const MAX_HISTORY = 20;
+  let barChart = null;      // Chart.js bar chart instance
+  
+  // DOM elements
+  const eventLogContainer = document.getElementById("eventLogContainer");
+  
+  // ======================== SEMICIRCULAR GAUGE DRAWING ========================
+  function drawSemiGauge(ctx, value, minVal, maxVal, goodColor, warningColor, highColor) {
+    const width = 220, height = 130;
+    ctx.clearRect(0, 0, width, height);
+    const centerX = width/2, centerY = height - 12;
+    const radius = 88;
+    const startAngle = -Math.PI;      // -180 deg (left)
+    const endAngle = 0;               // 0 deg (right)
+    
+    // Background arc
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 16;
+    ctx.stroke();
+    
+    // Normalized percent (0 to 1)
+    let percent = (value - minVal) / (maxVal - minVal);
+    percent = Math.min(1, Math.max(0, percent));
+    const angle = startAngle + (percent * (endAngle - startAngle));
+    
+    // Gradient color based on value
+    let gradient;
+    if (percent < 0.5) {
+      gradient = ctx.createLinearGradient(centerX - radius, centerY, centerX + radius, centerY);
+      gradient.addColorStop(0, goodColor);
+      gradient.addColorStop(1, warningColor);
+    } else {
+      gradient = ctx.createLinearGradient(centerX - radius, centerY, centerX + radius, centerY);
+      gradient.addColorStop(0, warningColor);
+      gradient.addColorStop(1, highColor);
+    }
+    
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, startAngle, angle);
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 16;
+    ctx.stroke();
+    
+    // Center dot
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
+    ctx.fillStyle = "#334155";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 4, 0, 2 * Math.PI);
+    ctx.fillStyle = "#f5e7d9";
+    ctx.fill();
+  }
+  
+  let tempGaugeCtx, riskGaugeCtx;
+  function updateGauges(temp, risk) {
+    if (!tempGaugeCtx) {
+      const tempCanvas = document.getElementById("tempSemiGauge");
+      if(tempCanvas) tempGaugeCtx = tempCanvas.getContext("2d");
+      const riskCanvas = document.getElementById("riskSemiGauge");
+      if(riskCanvas) riskGaugeCtx = riskCanvas.getContext("2d");
+    }
+    // Temperature gauge: 33°C to 42°C
+    drawSemiGauge(tempGaugeCtx, temp, 33, 42, "#0d9f6e", "#e68a2e", "#b91c1c");
+    // Risk gauge: 0 to 100
+    drawSemiGauge(riskGaugeCtx, risk, 0, 100, "#0d9f6e", "#e68a2e", "#b91c1c");
+    document.getElementById("tempDisplay").innerText = temp.toFixed(1);
+    document.getElementById("riskDisplay").innerText = Math.round(risk);
+  }
+  
+  // ======================== BAR CHART (20 readings) ========================
+  function initBarChart() {
+    const ctx = document.getElementById("tempBarChart").getContext("2d");
+    barChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Body Temperature (°C)',
+          data: [],
+          backgroundColor: [],
+          borderColor: [],
+          borderWidth: 2,
+          borderRadius: 8,
+          barPercentage: 0.75,
+          categoryPercentage: 0.85
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { 
+            labels: { color: '#1e293b', font: { size: 12, weight: 'bold', family: 'Inter' } },
+            position: 'top'
+          },
+          tooltip: { 
+            callbacks: { 
+              label: (ctx) => `${ctx.parsed.y.toFixed(1)} °C`,
+              title: (items) => `Reading ${items[0].label}`
+            },
+            backgroundColor: '#0a0c12',
+            titleColor: '#f5e7d9',
+            bodyColor: '#c7b28b'
+          }
+        },
+        scales: {
+          y: { 
+            min: 34, 
+            max: 42,
+            title: { display: true, text: 'Temperature (°C)', color: '#64748b', font: { weight: 'bold', size: 11 } },
+            grid: { color: '#e2e8f0' },
+            ticks: { stepSize: 1, callback: (val) => val + '°C' }
+          },
+          x: { 
+            title: { display: true, text: 'Reading Number (1 = Oldest, 20 = Newest)', color: '#64748b', font: { size: 10 } },
+            grid: { display: false },
+            ticks: { 
+              maxRotation: 45,
+              autoSkip: true,
+              maxTicksLimit: 10,
+              font: { size: 9 }
+            }
+          }
+        },
+        animation: { 
+          duration: 500, 
+          easing: 'easeOutQuart' 
+        }
+      }
+    });
+  }
+  
+  function updateBarChart() {
+    if (!barChart) initBarChart();
+    if (tempHistory.length === 0) return;
+    
+    // Show from oldest (index last) to newest (index 0) - left to right chronological
+    const chronological = [...tempHistory].reverse();
+    const labels = chronological.map((_, idx) => `${idx + 1}`);
+    const tempData = chronological.map(e => e.temp);
+    
+    // Color each bar based on temperature value
+    const bgColors = tempData.map(temp => {
+      if (temp > 38.5) return '#b91c1c';
+      if (temp > 37.5) return '#e68a2e';
+      return '#2b6e4a';
+    });
+    const borderColors = tempData.map(temp => {
+      if (temp > 38.5) return '#7f1d1d';
+      if (temp > 37.5) return '#c2410c';
+      return '#1e5a3a';
+    });
+    
+    barChart.data.labels = labels;
+    barChart.data.datasets[0].data = tempData;
+    barChart.data.datasets[0].backgroundColor = bgColors;
+    barChart.data.datasets[0].borderColor = borderColors;
+    
+    // Add threshold lines (optional annotation via plugin, but just visual via config)
+    barChart.update();
+  }
+  
+  // ======================== HISTORY & LOG ========================
+  function addToHistory(temp, risk, tempStatus, riskLevel) {
+    tempHistory.unshift({ temp, risk, tempStatus, riskLevel, time: new Date().toLocaleTimeString() });
+    if (tempHistory.length > MAX_HISTORY) tempHistory.pop();
+    renderEventLog();
+    updateBarChart();
+  }
+  
+  function renderEventLog() {
+    if (!eventLogContainer) return;
+    eventLogContainer.innerHTML = "";
+    if (tempHistory.length === 0) {
+      eventLogContainer.innerHTML = '<div class="log-entry">⏳ Waiting for telemetry...</div>';
+      return;
+    }
+    tempHistory.forEach((entry, idx) => {
+      const div = document.createElement("div");
+      div.className = "log-entry";
+      if (entry.risk > 65) div.classList.add("log-danger");
+      const readingNum = tempHistory.length - idx;
+      div.innerHTML = `<span style="font-family:monospace;">${entry.time}</span> | [#${readingNum}] 🌡️ ${entry.temp.toFixed(1)}°C (${entry.tempStatus}) | ⚠️ Risk ${entry.risk} (${entry.riskLevel})`;
+      eventLogContainer.appendChild(div);
+    });
+  }
+  
+  // ======================== AUDIO & BUZZER ========================
+  function playBeep(freq, dur, gain = 0.4) {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    try {
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+      osc.frequency.value = freq; gainNode.gain.value = gain;
+      osc.start(); gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+      osc.stop(audioCtx.currentTime + dur);
+    } catch(e) {}
+  }
+  function stopBuzzer() { if(buzzerInterval) clearInterval(buzzerInterval); buzzerInterval = null; document.getElementById("buzzerStatusMsg").innerHTML = "🔕 SILENT · MONITORING"; }
+  function startFallBuzzer() { stopBuzzer(); document.getElementById("buzzerStatusMsg").innerHTML = "🚨 FALL ALARM ACTIVE"; buzzerInterval = setInterval(()=>playBeep(950,0.25,0.55),650); }
+  function startRapidBuzzer() { stopBuzzer(); document.getElementById("buzzerStatusMsg").innerHTML = "⚠️ RAPID ALARM ACTIVE"; buzzerInterval = setInterval(()=>playBeep(750,0.2,0.45),700); }
+  
+  // ======================== CHARACTER ANIMATION ========================
+  const group = document.getElementById("characterGroup");
+  const alertMarkSvg = document.getElementById("alertMark");
+  const mouth = document.getElementById("mouth"), browL = document.getElementById("browL"), browR = document.getElementById("browR"), torso = document.getElementById("torso");
+  function updateCharacter(motion, isFall, isRapid) {
+    group.style.animation = ""; group.style.transform = ""; alertMarkSvg.style.display = "none";
+    if(isFall) {
+      group.style.transform = "rotate(78deg) translateX(20px) translateY(10px)";
+      alertMarkSvg.style.display = "block";
+      mouth.setAttribute("d","M92,88 Q100,80 108,88");
+      browL.setAttribute("d","M82,60 Q88,54 94,60");
+      browR.setAttribute("d","M106,60 Q112,54 118,60");
+      torso.setAttribute("fill","#9e2d2d");
+    } else {
+      torso.setAttribute("fill","#6c8b9b");
+      if(motion === "RAPID") group.style.animation = "shakeAnim 0.12s infinite";
+      else if(motion === "ACTIVE") group.style.animation = "bobAnim 0.5s infinite";
+      else if(motion === "WALKING") group.style.animation = "walkAnim 0.7s infinite";
+      else group.style.animation = "breatheAnim 3s infinite";
+      mouth.setAttribute("d","M92,84 Q100,90 108,84");
+      browL.setAttribute("d","M82,62 Q88,58 94,62");
+      browR.setAttribute("d","M106,62 Q112,58 118,62");
+    }
+    const pills = { STILL:"pillStill", WALKING:"pillWalk", ACTIVE:"pillActive", RAPID:"pillRapid" };
+    Object.values(pills).forEach(p => document.getElementById(p)?.classList.remove("active"));
+    if(pills[motion] && !isFall) document.getElementById(pills[motion]).classList.add("active");
+  }
+  
+  // ======================== TELEMETRY PROCESSING ========================
+  function addManualLog(msg, isDanger = false) {
+    if(eventLogContainer){
+      const div = document.createElement("div");
+      div.className = "log-entry" + (isDanger ? " log-danger" : "");
+      div.innerHTML = `<span style="font-family:monospace;">${new Date().toLocaleTimeString()}</span> | ${msg}`;
+      eventLogContainer.prepend(div);
+      while(eventLogContainer.children.length > 22) eventLogContainer.removeChild(eventLogContainer.lastChild);
+    }
+  }
+  
+  function processTelemetry(jsonStr) {
+    try {
+      const d = JSON.parse(jsonStr);
+      if (d.pong) { addManualLog("📡 PONG received"); return; }
+      let temp = (d.bt !== undefined) ? d.bt : 36.5;
+      let risk = (d.ri !== undefined) ? d.ri : 0;
+      let tempStatus = d.bts || "NORMAL";
+      let riskLevel = d.al || "SAFE";
+      
+      // Update UI elements
+      document.getElementById("tempStatusText").innerText = tempStatus;
+      document.getElementById("riskLevelText").innerText = riskLevel;
+      document.getElementById("alertLevelBadge").innerHTML = `⚠️ ${riskLevel}`;
+      document.getElementById("alertLevelBadge").style.background = (riskLevel==="DANGER"||riskLevel==="CRITICAL") ? "#3e1e1e" : "#0f2a1f";
+      
+      // Color coding for status text
+      if(tempStatus === "NORMAL") document.getElementById("tempStatusText").style.color = "#0d9f6e";
+      else if(tempStatus === "FEVER") document.getElementById("tempStatusText").style.color = "#e68a2e";
+      else document.getElementById("tempStatusText").style.color = "#b91c1c";
+      
+      if(riskLevel === "SAFE") document.getElementById("riskLevelText").style.color = "#0d9f6e";
+      else if(riskLevel === "CAUTION" || riskLevel === "WARNING") document.getElementById("riskLevelText").style.color = "#e68a2e";
+      else document.getElementById("riskLevelText").style.color = "#b91c1c";
+      
+      updateGauges(temp, risk);
+      addToHistory(temp, risk, tempStatus, riskLevel);
+      
+      let motion = (d.mv || "STILL").toUpperCase();
+      let fall = d.fl === true;
+      let rapid = d.rm === true;
+      fallActive = fall;
+      if(fall) { if(!buzzerInterval) startFallBuzzer(); addManualLog("🚨 FALL DETECTED", true); document.getElementById("fallStatusText").innerHTML = "⚠️ FALL EVENT — immediate care"; document.getElementById("fallStatusText").style.color = "#c0392b"; triggerWardSOS(1, "Fall detected"); }
+      else if(rapid) { if(!buzzerInterval) startRapidBuzzer(); addManualLog("⚡ RAPID MOTION ALERT", true); document.getElementById("fallStatusText").innerHTML = "⚡ RAPID MOVEMENT"; document.getElementById("fallStatusText").style.color = "#f5b042"; triggerWardSOS(1, "Rapid movement"); }
+      else { if(buzzerInterval && !fallActive) stopBuzzer(); document.getElementById("fallStatusText").innerHTML = "✓ No active alert"; document.getElementById("fallStatusText").style.color = "#bef5d0"; }
+      currentMotion = motion;
+      updateCharacter(currentMotion, fall, rapid);
+    } catch(e) { console.warn(e); }
+  }
+  
+  // ======================== BLE COMMANDS & CONNECTION ========================
+  async function sendCommand(cmd) {
+    if (!cmdChar || !isConnected) { addManualLog("⚠️ Not connected", false); return; }
+    try {
+      await cmdChar.writeValue(new TextEncoder().encode(cmd));
+      addManualLog(`📟 CMD: ${cmd}`);
+      if (cmd === "DISMISS") { stopBuzzer(); document.getElementById("fallStatusText").innerHTML = "✓ Alert cleared"; fallActive=false; updateCharacter(currentMotion,false,false); }
+      if (cmd === "BUZZ_OFF") stopBuzzer();
+    } catch(e) { addManualLog(`CMD error: ${e.message}`, true); }
+  }
+  
+  async function connectBLE() {
+    if (!navigator.bluetooth) { addManualLog("❌ Web Bluetooth not supported. Use Chrome/Edge on HTTPS/localhost", true); return; }
+    try {
+      document.getElementById("connDot").className = "dot scanning";
+      document.getElementById("connText").innerText = "Scanning...";
+      bleDevice = await navigator.bluetooth.requestDevice({
+        filters: [{ name: "SAHAARA-Sentinel" }, { name: "ElderGuard-Sentinel" }],
+        optionalServices: [SERVICE_UUID]
+      });
+      bleDevice.addEventListener("gattserverdisconnected", () => { isConnected=false; document.getElementById("connDot").className="dot"; document.getElementById("connText").innerText="Connect Device"; addManualLog("Disconnected"); });
+      const server = await bleDevice.gatt.connect();
+      const service = await server.getPrimaryService(SERVICE_UUID);
+      telChar = await service.getCharacteristic(TEL_UUID);
+      await telChar.startNotifications();
+      telChar.addEventListener("characteristicvaluechanged", (e) => {
+        const raw = new TextDecoder().decode(e.target.value);
+        if (raw && (raw.includes("{") || raw.includes("pong"))) processTelemetry(raw);
+      });
+      cmdChar = await service.getCharacteristic(CMD_UUID);
+      isConnected = true;
+      document.getElementById("connDot").className = "dot connected";
+      document.getElementById("connText").innerText = "Connected ✓";
+      addManualLog("🔗 Connected to SAHAARA device");
+      sendCommand("PING");
+    } catch(err) {
+      addManualLog(`BLE error: ${err.message}`, true);
+      document.getElementById("connDot").className = "dot";
+      document.getElementById("connText").innerText = "Connect Device";
+      isConnected = false;
+    }
+  }
+  function disconnectBLE() { if(bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect(); else { isConnected=false; document.getElementById("connDot").className="dot"; document.getElementById("connText").innerText="Connect Device"; } }
+  
+  document.getElementById("bleConnectBtn").onclick = () => { if(isConnected) disconnectBLE(); else connectBLE(); };
+  document.getElementById("silenceBtn").onclick = () => sendCommand("BUZZ_OFF");
+  document.getElementById("dismissAlertBtn").onclick = () => sendCommand("DISMISS");
+  document.getElementById("cmdArm").onclick = () => sendCommand("ARM");
+  document.getElementById("cmdTest").onclick = () => sendCommand("TEST");
+  
+  // ======================== WARD DATA (same logic) ========================
+  const names = ["Amita Sharma","Balram Singh","Champa Devi","Dilip Kumar","Esha Nair","Farhan Ansari","Gayatri Joshi","Hari Mohan","Ishita Roy","Javed Khan","Kamla Patel","Lalit Gupta","Meena Iyer","Narendra Mehta","Om Prakash","Priya Menon","Qasim Ali","Radhika Reddy","Suresh Shetty","Tara Sen","Uday Chopra","Vidya Balan","Wasim Akram","Yamini Desai"];
+  const rooms = ["A-101","A-102","A-103","B-201","B-202","C-301","C-302","D-401","D-402","E-501","A-104","B-203","C-303","D-403","E-502","F-601","F-602","G-701","G-702","H-801","H-802","I-901","J-1001","J-1002"];
+  let patients = names.map((name,i)=>({ id:i+1, name, room:rooms[i%rooms.length], condition:"Elder Care", status:"ok", alertTime:null, alertReason:"" }));
+  let filters = { sos:true, ack:true, ok:true }, searchTerm = "";
+  function updateWardStats() { let s=patients.filter(p=>p.status==="sos").length, a=patients.filter(p=>p.status==="ack").length, o=patients.filter(p=>p.status==="ok").length; document.getElementById("wardSosCount").innerText=s; document.getElementById("wardAckCount").innerText=a; document.getElementById("wardOkCount").innerText=o; renderWardGrid(); }
+  function addWardLog(msg, isSos=false){ let c=document.getElementById("wardLogList"); let d=document.createElement("div"); d.className="log-entry"+(isSos?" log-danger":""); d.textContent=`[${new Date().toLocaleTimeString()}] ${msg}`; c.prepend(d); while(c.children.length>25) c.removeChild(c.lastChild); }
+  function triggerWardSOS(id, reason){ let p=patients.find(p=>p.id===id); if(!p || p.status==="sos") return; p.status="sos"; p.alertTime=Date.now(); p.alertReason=reason; updateWardStats(); addWardLog(`🚨 SOS: ${p.name} (${p.room}) — ${reason}`, true); let t=document.createElement("div"); t.style.position="fixed"; t.style.bottom="20px"; t.style.right="20px"; t.style.background="#1f1f2b"; t.style.color="#f5e7d9"; t.style.padding="12px 20px"; t.style.borderRadius="28px"; t.innerText=`🚨 ${p.name} - ${reason}`; document.body.appendChild(t); setTimeout(()=>t.remove(),4000); if(!document.getElementById("wardPanel").classList.contains("active")) document.getElementById("tabWardBtn").style.background="#4a2f2f"; setTimeout(()=>document.getElementById("tabWardBtn").style.background="",2000); }
+  function acknowledgeSOS(id){ let p=patients.find(p=>p.id===id); if(p && p.status==="sos"){ p.status="ack"; addWardLog(`✅ Acknowledged: ${p.name}`); updateWardStats(); } closeModal(); }
+  function clearPatient(id){ let p=patients.find(p=>p.id===id); if(p && (p.status==="ack"||p.status==="sos")){ p.status="ok"; p.alertTime=null; p.alertReason=""; addWardLog(`🟢 Cleared: ${p.name} stable`); updateWardStats(); } closeModal(); }
+  function renderWardGrid(){ let f=patients.filter(p=> filters[p.status] && (searchTerm==="" || p.name.toLowerCase().includes(searchTerm) || p.room.toLowerCase().includes(searchTerm))); document.getElementById("wardPatientGrid").innerHTML=f.map(p=>`<div class="ward-patient-card ${p.status}" onclick="openWardModal(${p.id})"><div class="p-header"><div class="p-avatar">${p.name.split(" ").map(n=>n[0]).join("")}</div><div class="status-tag ${p.status}">${p.status==="sos"?"🚨 SOS":p.status==="ack"?"⚠️ ACK":"✅ STABLE"}</div></div><div style="font-weight:700;">${p.name}</div><div>🛏️ ${p.room}</div>${p.alertReason?`<div style="font-size:11px;color:#b91c1c;margin-top:6px;">${p.alertReason}</div>`:""}<div style="font-size:10px;color:#6b7280;margin-top:8px;">${p.status!=="ok" && p.alertTime?new Date(p.alertTime).toLocaleTimeString():""}</div></div>`).join(""); }
+  window.openWardModal = function(id){
+    let p=patients.find(p=>p.id===id); if(!p) return;
+    let m=document.createElement("div"); m.id="wardModal"; m.style.position="fixed"; m.style.inset="0"; m.style.background="rgba(0,0,0,0.7)"; m.style.display="flex"; m.style.alignItems="center"; m.style.justifyContent="center"; m.style.zIndex="1000";
+    m.innerHTML = `<div style="background:white;border-radius:28px;max-width:360px;margin:auto;padding:24px;color:#1e293b;"><h3>${p.name}</h3><p>Room ${p.room} · ${p.condition}</p><p style="background:#f1f5f9;padding:8px;border-radius:16px;">Status: <strong>${p.status.toUpperCase()}</strong></p>${p.alertReason?`<p>⚠️ ${p.alertReason}</p>`:""}<div style="display:flex;gap:12px;margin-top:20px;">${p.status==="sos"?`<button onclick="acknowledgeSOS(${p.id})" style="background:#b91c1c;color:white;border:none;padding:8px 18px;border-radius:40px;">Acknowledge</button>`:p.status==="ack"?`<button onclick="clearPatient(${p.id})" style="background:#0d9f6e;color:white;border:none;padding:8px 18px;border-radius:40px;">Mark All Clear</button>`:`<button disabled style="background:#ccc;">No action</button>`}<button onclick="closeModal()" style="background:#e2e8f0;border:none;padding:8px 18px;border-radius:40px;">Close</button></div></div>`;
+    document.body.appendChild(m);
+  };
+  window.closeModal = function(){ let m=document.getElementById("wardModal"); if(m) m.remove(); };
+  document.getElementById("filterSosBtn").onclick = () => { filters.sos=!filters.sos; document.getElementById("filterSosBtn").classList.toggle("sos-active",filters.sos); updateWardStats(); };
+  document.getElementById("filterAckBtn").onclick = () => { filters.ack=!filters.ack; document.getElementById("filterAckBtn").classList.toggle("ack-active",filters.ack); updateWardStats(); };
+  document.getElementById("filterOkBtn").onclick = () => { filters.ok=!filters.ok; document.getElementById("filterOkBtn").classList.toggle("ok-active",filters.ok); updateWardStats(); };
+  document.getElementById("wardSearch").addEventListener("input", e=>{ searchTerm=e.target.value.toLowerCase(); updateWardStats(); });
+  document.getElementById("tabMonitorBtn").onclick = () => { document.getElementById("monitorPanel").classList.add("active"); document.getElementById("wardPanel").classList.remove("active"); document.querySelectorAll(".tab-btn").forEach(btn=>btn.classList.remove("active")); document.getElementById("tabMonitorBtn").classList.add("active"); };
+  document.getElementById("tabWardBtn").onclick = () => { document.getElementById("wardPanel").classList.add("active"); document.getElementById("monitorPanel").classList.remove("active"); document.querySelectorAll(".tab-btn").forEach(btn=>btn.classList.remove("active")); document.getElementById("tabWardBtn").classList.add("active"); updateWardStats(); };
+  
+  // Initialize
+  updateWardStats();
+  initBarChart();
+  addManualLog("⚡ SAHAARA Dashboard Ready — Click Connect to scan BLE device");
+  if(!navigator.bluetooth) addManualLog("⚠️ Web Bluetooth not supported. Please use Chrome/Edge on HTTPS/localhost", true);
+  renderEventLog();
+  // Initial gauge draws
+  setTimeout(() => { updateGauges(36.5, 0); }, 100);
+</script>
+</body>
+</html>
